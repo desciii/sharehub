@@ -101,3 +101,9 @@ html::-webkit-scrollbar, body::-webkit-scrollbar { display:none; width:0; height
 }
 
 @media (prefers-reduced-motion:reduce) { .btn::before { transition:none; } }
+
+/* Smoother page-to-page transition: old page lifts and fades, new page rises in */
+@keyframes vt-out { to   { opacity:0; transform:translateY(-6px); } }
+@keyframes vt-in  { from { opacity:0; transform:translateY(10px); } }
+::view-transition-old(root) { animation:vt-out .22s cubic-bezier(.4,0,1,1) both; }
+::view-transition-new(root) { animation:vt-in  .38s cubic-bezier(.22,1,.36,1) both; }

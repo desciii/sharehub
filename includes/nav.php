@@ -9,7 +9,7 @@ function app_head_assets(): void
 {
     ?>
 <meta name="view-transition" content="same-origin">
-<link rel="stylesheet" href="/assets/nav.css?v=5">
+<link rel="stylesheet" href="/assets/nav.css?v=6">
 <script src="https://cdn.jsdelivr.net/npm/@hotwired/turbo@8.0.12/dist/turbo.es2017-umd.js" defer></script>
 <script src="/js/nav.js" defer></script>
 <?php
@@ -24,10 +24,10 @@ function app_nav(string $active = ''): void
     ?>
 <header class="sh-nav" id="nav">
   <div class="sh-nav__in">
-    <a href="/home.php" class="sh-nav__logo">ShareHub</a>
+    <a href="/index.php" class="sh-nav__logo">ShareHub</a>
     <nav class="sh-nav__links">
+      <a href="/home.php"<?= $on('home') ?>>Home</a>
       <a href="/browse.php"<?= $on('browse') ?>>Browse subscriptions</a>
-      <a href="/create-group.php"<?= $on('create') ?>>Create a group</a>
       <a href="/dashboard.php"<?= $on('dashboard') ?>>My subscriptions</a>
       <a href="/home.php#how">How it works</a>
     </nav>

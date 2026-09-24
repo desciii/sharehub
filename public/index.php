@@ -3,6 +3,7 @@
 
 require __DIR__ . '/../includes/config.php';
 require __DIR__ . '/../includes/auth.php';
+require __DIR__ . '/../includes/nav.php';
 
 header('Cache-Control: no-store, max-age=0');
 
@@ -20,8 +21,8 @@ if (!str_starts_with($redirectTo, '/') || str_starts_with($redirectTo, '//')) {
 if (!$isLoggedIn && !$authMode && isset($_GET['redirect'])) {
     $authMode = 'login';
 }
-$oldName    = $_SESSION['old_name'] ?? '';
-$oldEmail   = $_SESSION['old_email'] ?? '';
+$oldName  = $_SESSION['old_name'] ?? '';
+$oldEmail = $_SESSION['old_email'] ?? '';
 unset($_SESSION['auth_errors'], $_SESSION['auth_mode'], $_SESSION['old_name'], $_SESSION['old_email']);
 
 // [name, domain, category, fallback emoji, max savings %, description]
@@ -57,9 +58,18 @@ $rows = [
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Newsreader:opsz,wght@6..72,500;6..72,600&display=swap" rel="stylesheet">
+<?php app_head_assets(); ?>
+</head>
+<body>
+
+<?php /* Page styles live in <body> on purpose: Turbo keeps <head> styles forever, so head styles from this page would leak into home/browse/etc. */ ?>
 <style>
   :root { --bg:#f7f5f0; --green:#1fa35c; --green-dk:#16743f; --blue:#1d2320; --ink:#1d2320; --muted:#6b7570; --line:#e6e2da; --soft:#f0ece3; }
-  * { box-sizing:border-box; margin:0; padding:0; }
+
+  /* Reset: the shared logged-in nav (.sh-nav) is left alone so it looks identical to home.php */
+  * { box-sizing:border-box; }
+  :where(*:not(.sh-nav):not(.sh-nav *)) { margin:0; padding:0; }
+
   html { scroll-behavior:smooth; scroll-padding-top:80px; scrollbar-width:none; -ms-overflow-style:none; }
   html::-webkit-scrollbar, body::-webkit-scrollbar { display:none; width:0; height:0; }
   body { font-family:'Inter',system-ui,sans-serif; color:var(--ink); background:var(--bg); line-height:1.55; overflow-x:clip; -webkit-text-size-adjust:100%; }
@@ -67,18 +77,17 @@ $rows = [
   h1,h2,h3.serif { font-family:'Newsreader',Georgia,serif; font-weight:500; line-height:1.12; letter-spacing:-.01em; }
   .wrap { width:min(1120px,100% - 3rem); margin:0 auto; }
 
-  /* Nav */
-  .nav { position:sticky; top:0; z-index:50; background:rgba(247,245,240,.92); backdrop-filter:blur(10px); }
-  .nav .wrap { display:flex; align-items:center; height:68px; gap:34px; }
-  .logo { font-family:'Newsreader',serif; font-size:24px; font-weight:600; color:var(--ink); }
-  .links { display:flex; gap:28px; flex:1; font-size:13px; font-weight:500; }
-  .links a, .acct a { display:inline-flex; align-items:center; gap:8px; color:var(--ink); opacity:.75; font-size:13px; font-weight:500; transition:opacity .2s, background .2s, transform .2s; }
-  .links a:hover, .acct a:hover { opacity:1; }
-  .acct { align-items:center; }
-  .pill-btn { background:#e9e5dc; padding:10px 20px; border-radius:999px; opacity:1 !important; }
-  .pill-btn:hover { background:#ddd8cc; transform:translateY(-2px); }
-  .links svg { width:17px; height:17px; stroke:currentColor; fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
-  .acct { display:flex; gap:26px; }
+  /* Landing nav (logged out only) */
+  .nav { position:sticky; top:0; z-index:50; height:68px; background:rgba(247,245,240,.94); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px); border-bottom:1px solid transparent; transition:box-shadow .3s ease, border-color .3s ease; }
+  .nav.scrolled { border-color:var(--line); box-shadow:0 8px 28px rgba(29,35,32,.06); }
+  .nav .wrap { display:flex; align-items:center; justify-content:space-between; height:100%; gap:28px; }
+  .logo { flex:none; font-family:'Newsreader',Georgia,serif; font-size:27px; font-weight:600; letter-spacing:-.04em; color:var(--ink); }
+  .links { display:flex; align-items:center; justify-content:center; gap:28px; margin:0 auto; }
+  .links a, .acct > a:not(.pill-btn) { color:#5f6864; font-size:14px; font-weight:500; transition:color .2s ease; }
+  .links a:hover, .acct > a:not(.pill-btn):hover { color:var(--ink); }
+  .acct { display:flex; align-items:center; gap:18px; flex:none; }
+  .pill-btn { display:inline-flex; align-items:center; justify-content:center; min-height:40px; padding:0 18px; border-radius:999px; background:var(--green); color:#fff !important; font-size:14px; font-weight:600; transition:background .2s ease, transform .2s ease; }
+  .pill-btn:hover { background:var(--green-dk); transform:translateY(-1px); }
   .burger { display:none; width:40px; height:40px; border:0; background:none; cursor:pointer; padding:10px 8px; flex-direction:column; justify-content:space-between; }
   .burger span { display:block; height:2px; border-radius:2px; background:var(--ink); transition:transform .3s, opacity .3s; }
   .nav.menu-open .burger span:nth-child(1) { transform:translateY(8px) rotate(45deg); }
@@ -98,94 +107,25 @@ $rows = [
   .btn:focus-visible, .btn-line:focus-visible { outline:3px solid var(--green); outline-offset:3px; }
 
   /* Hero */
-  .hero { position:relative; min-height:calc(100vh - 68px); max-height:760px; display:flex; align-items:flex-end; justify-content:center; text-align:center; color:#fff;
+  .hero { position:relative; overflow:hidden; min-height:max(calc(100vh - 68px), 660px); min-height:max(calc(100svh - 68px), 660px); max-height:760px; display:flex; align-items:flex-end; justify-content:center; text-align:center; color:#fff;
     background:linear-gradient(180deg,rgba(0,0,0,.05) 35%,rgba(0,0,0,.65) 100%),url('/images/hero.jpg') center 30%/cover no-repeat,#24503a; }
-  .hero-in { padding:0 24px 88px; max-width:760px; }
-  .hero h1 { font-size:clamp(36px,5.2vw,58px); margin-bottom:18px; text-shadow:0 2px 14px rgba(0,0,0,.35); }
+  .hero h1 { font-size:clamp(36px,5.2vw,58px); margin-bottom:18px; text-shadow:0 2px 14px rgba(0,0,0,.35); transition:font-size .6s ease; }
   .hero p { font-size:clamp(16px,1.8vw,19px); margin-bottom:28px; text-shadow:0 1px 8px rgba(0,0,0,.4); }
 
   /* Hero: text swaps with the login / register form */
-  .hero { overflow:hidden; }
   .hero-in { display:grid; grid-template-columns:minmax(0,1fr) 0px; column-gap:0; align-self:stretch; align-items:end; width:min(1120px,100% - 3rem); max-width:none; padding:0;
-    transition:grid-template-columns .85s cubic-bezier(.22,1,.36,1), column-gap .85s cubic-bezier(.22,1,.36,1), opacity .2s linear; }
+    transition:grid-template-columns .85s cubic-bezier(.22,1,.36,1), column-gap .85s cubic-bezier(.22,1,.36,1), opacity .2s linear;
+    animation:page-in .5s cubic-bezier(.22,1,.36,1) backwards; }
   .hero.auth-open .hero-in { grid-template-columns:minmax(0,1fr) 410px; column-gap:56px; }
+  @keyframes page-in { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:none; } }
 
-  /* Hero text */
-  .hero-text {
-    align-self:center;
-    margin-bottom:0;
-    padding-inline:max(0px, calc((100% - 720px) / 2));
-    transition:
-      padding .85s cubic-bezier(.22,1,.36,1),
-      opacity .3s ease,
-      transform .85s cubic-bezier(.22,1,.36,1);
-  }
-
-  .hero h1 {
-    transition:font-size .6s ease;
-  }
-
-  /* Auth opened */
-  .hero.auth-open .hero-text {
-    padding-left:0;
-    padding-right:max(0px, calc(100% - 540px));
-    align-self:center;
-    margin-bottom:0;
-    text-align:left;
-    animation:textIn .9s ease both;
-  }
-
-  .hero.auth-open h1 {
-    font-size:clamp(34px,4.4vw,50px);
-  }
-
-  /* Closing auth */
-  .hero.auth-closing .hero-text {
-    animation:textOut .9s ease both;
-  }
-
-  @keyframes textIn {
-    0% {
-      opacity:1;
-      transform:none;
-    }
-
-    30% {
-      opacity:0;
-      transform:translateX(-20px);
-    }
-
-    31% {
-      opacity:0;
-    }
-
-    100% {
-      opacity:1;
-      transform:none;
-    }
-  }
-
-  @keyframes textOut {
-    0% {
-      opacity:1;
-      transform:none;
-    }
-
-    30% {
-      opacity:0;
-      transform:translateX(-20px);
-    }
-
-    31% {
-      opacity:0;
-      transform:translateX(0);
-    }
-
-    100% {
-      opacity:1;
-      transform:none;
-    }
-  }
+  .hero-text { align-self:center; margin-bottom:0; padding-inline:max(0px, calc((100% - 720px) / 2));
+    transition:padding .85s cubic-bezier(.22,1,.36,1), opacity .3s ease, transform .85s cubic-bezier(.22,1,.36,1); }
+  .hero.auth-open .hero-text { padding-left:0; padding-right:max(0px, calc(100% - 540px)); align-self:center; margin-bottom:0; text-align:left; animation:textIn .9s ease both; }
+  .hero.auth-open h1 { font-size:clamp(34px,4.4vw,50px); }
+  .hero.auth-closing .hero-text { animation:textOut .9s ease both; }
+  @keyframes textIn  { 0% { opacity:1; transform:none; } 30% { opacity:0; transform:translateX(-20px); } 31% { opacity:0; } 100% { opacity:1; transform:none; } }
+  @keyframes textOut { 0% { opacity:1; transform:none; } 30% { opacity:0; transform:translateX(-20px); } 31% { opacity:0; transform:translateX(0); } 100% { opacity:1; transform:none; } }
 
   /* form: slides in from the right corner */
   .hero-form { align-self:center; justify-self:start; width:410px; max-width:100%; opacity:0; visibility:hidden; transform:translateX(calc(100% + 140px)); pointer-events:none;
@@ -210,20 +150,20 @@ $rows = [
   .auth-switch { text-align:center; margin-top:14px; font-size:14px; color:var(--muted); }
   .auth-switch button { background:none; border:0; font:inherit; font-weight:700; color:var(--green-dk); cursor:pointer; padding:0; }
   .auth-switch button:hover { text-decoration:underline; }
-  .hero { min-height:max(calc(100vh - 68px), 660px); min-height:max(calc(100svh - 68px), 660px); }
   .auth-alert { background:#fdecec; color:#a02b2b; border-radius:14px; padding:10px 14px; margin-bottom:12px; font-size:14px; }
   .auth-alert ul { list-style:none; }
   .auth-alert li + li { margin-top:3px; }
+
   /* opened by the server (after a failed login / register): show final state instantly */
   .hero.no-anim .hero-in, .hero.no-anim .hero-text, .hero.no-anim .hero-form, .hero.no-anim h1 { transition:none; }
   .hero.no-anim .hero-text { animation:none; text-align:left; align-self:center; margin-bottom:0; }
+
   @media (max-width:900px) {
     .hero-in, .hero.auth-open .hero-in { grid-template-columns:minmax(0,1fr); column-gap:0; }
     .hero-text, .hero-form { grid-area:1/1; }
     .hero-text, .hero.auth-open .hero-text { padding-inline:0; animation:none; transition:transform .7s cubic-bezier(.22,1,.36,1), opacity .5s ease; }
     .hero.auth-open .hero-text { opacity:0; transform:translateX(-60px); pointer-events:none; text-align:center; }
-    .hero-form { justify-self:center; transform:translateX(70px); }
-    .hero-form { margin-bottom:0; }
+    .hero-form { justify-self:center; transform:translateX(70px); margin-bottom:0; }
     .hero.no-anim .hero-text { text-align:center; }
     .hero.auth-open h1 { font-size:clamp(34px,5vw,54px); }
   }
@@ -264,9 +204,9 @@ $rows = [
   .kpi-desc p { font-size:14px; line-height:1.5; }
   .kpi:hover .kpi-desc, .kpi.open .kpi-desc { transform:translateY(0); }
   .marquee:has(.kpi.open) .track { animation-play-state:paused; }
-  @keyframes slide-right { from{transform:translateX(-50%)} to{transform:translateX(0)} }
-  @keyframes slide-left  { from{transform:translateX(0)} to{transform:translateX(-50%)} }
-  @media (prefers-reduced-motion:reduce) { .track{animation:none} .marquee{overflow-x:auto} }
+  @keyframes slide-right { from { transform:translateX(-50%); } to { transform:translateX(0); } }
+  @keyframes slide-left  { from { transform:translateX(0); } to { transform:translateX(-50%); } }
+  @media (prefers-reduced-motion:reduce) { .track { animation:none; } .marquee { overflow-x:auto; } }
   .center { text-align:center; margin-top:26px; }
   .btn-line { display:inline-block; padding:11px 26px; border:1.5px solid var(--ink); border-radius:999px; font-weight:500; font-size:14px; transition:background .25s, color .25s, transform .25s, box-shadow .25s; }
   .btn-line:hover { background:var(--ink); color:#fff; transform:translateY(-3px); box-shadow:0 10px 22px rgba(0,0,0,.15); }
@@ -286,9 +226,7 @@ $rows = [
   .info-card.create li::before { color:#fff; }
   .info-card .btn { margin-top:auto; }
 
-  /* Smooth scroll effects */
-  .nav { transition:box-shadow .3s; }
-  .nav.scrolled { box-shadow:0 1px 0 var(--line); }
+  /* Scroll reveal */
   .js [data-reveal] { opacity:0; transform:translateY(22px); transition:opacity .8s cubic-bezier(.22,1,.36,1), transform .8s cubic-bezier(.22,1,.36,1); transition-delay:var(--d,0s); }
   .js [data-reveal].in { opacity:1; transform:none; }
   @media (prefers-reduced-motion:reduce) { .btn, .btn-line { transition:none; } .btn:hover, .btn-line:hover { transform:none; } .js [data-reveal] { opacity:1; transform:none; transition:none; } html { scroll-behavior:auto; } }
@@ -303,9 +241,9 @@ $rows = [
     .nav .wrap { gap:12px; }
     .logo { margin-right:auto; }
     .burger { display:flex; }
-    .links { display:none; position:absolute; top:68px; left:0; right:0; flex-direction:column; gap:0; background:var(--bg); border-bottom:1px solid var(--line); box-shadow:0 14px 24px rgba(0,0,0,.08); padding:8px 24px 16px; }
+    .links { display:none; position:absolute; top:68px; left:0; right:0; flex-direction:column; align-items:stretch; gap:0; margin:0; background:var(--bg); border-bottom:1px solid var(--line); box-shadow:0 14px 24px rgba(0,0,0,.08); padding:8px 24px 16px; }
     .nav.menu-open .links { display:flex; }
-    .links a { padding:14px 0; border-bottom:1px solid var(--line); font-size:15px; opacity:1; }
+    .links a { padding:14px 0; border-bottom:1px solid var(--line); font-size:15px; }
     .links a:last-child { border-bottom:0; }
     .hero { max-height:none; }
     .hero-in { padding:32px 0; }
@@ -314,8 +252,8 @@ $rows = [
   }
   @media (max-width:520px) {
     .acct { gap:10px; }
-    .acct a { font-size:13px; }
-    .pill-btn { padding:9px 16px; }
+    .acct > a { font-size:13px; }
+    .pill-btn { padding:0 16px; }
     .wrap { width:min(1120px,100% - 2rem); }
     .hero-in { width:calc(100% - 2rem); }
     .hero p { font-size:16px; }
@@ -330,28 +268,37 @@ $rows = [
     .cta p { font-size:16px; }
   }
 </style>
-</head>
-<body>
 
-<header class="nav">
+<?php if ($isLoggedIn): ?>
+
+    <?php app_nav(''); ?>
+
+<?php else: ?>
+
+<header class="nav" id="landing-nav">
   <div class="wrap">
-    <a href="/" class="logo">ShareHub</a>
+    <a href="/index.php" class="logo">ShareHub</a>
+
     <nav class="links">
       <a href="#browse">Browse subscriptions</a>
       <a href="#sell">Create a group</a>
       <a href="#how">How it works</a>
     </nav>
+
     <div class="acct">
-      <?php if ($isLoggedIn): ?>
-        <a href="/home.php" class="pill-btn">Home</a>
-      <?php else: ?>
-        <a href="/login.php">Sign in</a>
-        <a href="/register.php" class="pill-btn">Sign up</a>
-      <?php endif; ?>
+      <a href="/login.php">Sign in</a>
+      <a href="/register.php" class="pill-btn">Sign up</a>
     </div>
-    <button type="button" class="burger" id="burger" aria-label="Menu" aria-expanded="false"><span></span><span></span><span></span></button>
+
+    <button type="button" class="burger" id="burger" aria-label="Menu" aria-expanded="false">
+      <span></span>
+      <span></span>
+      <span></span>
+    </button>
   </div>
 </header>
+
+<?php endif; ?>
 
 <section class="hero<?= $authMode ? ' auth-open no-anim' : '' ?>" style="padding:0">
   <div class="hero-in">
@@ -436,7 +383,7 @@ $rows = [
                 <span class="kpi-cat"><?= htmlspecialchars($cat) ?></span>
               </div>
               <h3 class="kpi-name"><?= htmlspecialchars($name) ?></h3>
-              <div class="kpi-save"><small>Save as much as</small><div class="kpi-pct"><?= (int)$pct ?><span>%</span></div></div>
+              <div class="kpi-save"><small>Save as much as</small><div class="kpi-pct"><?= (int) $pct ?><span>%</span></div></div>
               <div class="kpi-foot">when you split with a group</div>
               <div class="kpi-desc"><strong>About <?= htmlspecialchars($name) ?></strong><p><?= htmlspecialchars($desc) ?></p></div>
             </div>
@@ -484,34 +431,50 @@ $rows = [
 </section>
 
 <footer>© <?= date('Y') ?> ShareHub. Student project prototype, so payments are simulated.</footer>
+
 <script>
+(function () {
   document.documentElement.classList.add('js');
-  const nav = document.querySelector('.nav');
+
+  // Everything this page attaches to window/document gets removed when Turbo leaves the page
+  const cleanups = [];
+  function on(target, type, fn, opts) {
+    target.addEventListener(type, fn, opts);
+    cleanups.push(() => target.removeEventListener(type, fn, opts));
+  }
+  document.addEventListener('turbo:before-render', () => cleanups.forEach(fn => fn()), { once: true });
+
+  // #landing-nav only exists when logged out (logged-in users get the shared app nav)
+  const nav = document.getElementById('landing-nav');
   const heroIn = document.querySelector('.hero-in');
   const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
   let ticking = false;
 
   function onScroll() {
     const y = window.scrollY;
-    nav.classList.toggle('scrolled', y > 10);
-    if (!still && y < window.innerHeight) {
+    if (nav) nav.classList.toggle('scrolled', y > 10);
+    if (heroIn && !still && y < window.innerHeight) {
       heroIn.style.opacity = Math.max(0, 1 - y / (window.innerHeight * 0.8));
     }
     ticking = false;
   }
-  addEventListener('scroll', () => { if (!ticking) { requestAnimationFrame(onScroll); ticking = true; } }, { passive: true });
+  on(window, 'scroll', () => { if (!ticking) { requestAnimationFrame(onScroll); ticking = true; } }, { passive: true });
   onScroll();
 
   const io = new IntersectionObserver((entries) => {
     entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } });
   }, { threshold: 0.15, rootMargin: '0px 0px -40px 0px' });
   document.querySelectorAll('[data-reveal]').forEach(el => io.observe(el));
-  // Mobile menu
+  cleanups.push(() => io.disconnect());
+
+  // Mobile menu (logged-out nav only)
   const burger = document.getElementById('burger');
-  function setMenu(o) { nav.classList.toggle('menu-open', o); burger.setAttribute('aria-expanded', o); }
-  burger.addEventListener('click', () => setMenu(!nav.classList.contains('menu-open')));
-  document.querySelectorAll('.links a').forEach(a => a.addEventListener('click', () => setMenu(false)));
-  addEventListener('keydown', e => { if (e.key === 'Escape') setMenu(false); });
+  if (nav && burger) {
+    const setMenu = (o) => { nav.classList.toggle('menu-open', o); burger.setAttribute('aria-expanded', o); };
+    burger.addEventListener('click', () => setMenu(!nav.classList.contains('menu-open')));
+    nav.querySelectorAll('.links a').forEach(a => a.addEventListener('click', () => setMenu(false)));
+    on(window, 'keydown', e => { if (e.key === 'Escape') setMenu(false); });
+  }
 
   // Tap a subscription card to read its description (touch screens have no hover)
   document.querySelectorAll('.kpi').forEach(k => k.addEventListener('click', () => {
@@ -520,7 +483,7 @@ $rows = [
     if (!was) k.classList.add('open');
   }));
 
-  // Hero login / register swipe
+  // Hero login / register swipe (logged out only)
   const authBox = document.getElementById('authBox');
   if (authBox) {
     const heroEl = document.querySelector('.hero');
@@ -531,6 +494,10 @@ $rows = [
     function showPane(mode) {
       panes.forEach(p => { p.hidden = p.dataset.pane !== mode; });
     }
+    function focusPane() {
+      const i = authBox.querySelector('[data-pane]:not([hidden]) input');
+      if (i) i.focus({ preventScroll: true });
+    }
     function openAuth(mode) {
       showPane(mode);
       window.scrollTo({ top: 0, behavior: still ? 'auto' : 'smooth' });
@@ -540,7 +507,7 @@ $rows = [
         heroEl.classList.add('auth-open');
         authBox.inert = false;
       }
-      setTimeout(() => { const i = authBox.querySelector('[data-pane]:not([hidden]) input'); if (i) i.focus({ preventScroll: true }); }, still ? 0 : 500);
+      setTimeout(focusPane, still ? 0 : 500);
     }
     function closeAuth() {
       open = false;
@@ -551,7 +518,7 @@ $rows = [
       authBox.inert = true;
     }
 
-    addEventListener('pageshow', (e) => {
+    on(window, 'pageshow', (e) => {
       if (!e.persisted) return;
       open = false;
       heroEl.classList.remove('auth-open', 'auth-closing', 'no-anim');
@@ -560,15 +527,16 @@ $rows = [
       authBox.querySelectorAll('input[type=password]').forEach(i => { i.value = ''; });
     });
 
-    document.addEventListener('click', (e) => {
+    on(document, 'click', (e) => {
       const link = e.target.closest('a[href="/login.php"], a[href="/register.php"]');
       if (link) { e.preventDefault(); openAuth(link.getAttribute('href') === '/login.php' ? 'login' : 'register'); return; }
       const sw = e.target.closest('[data-mode]');
-      if (sw) { showPane(sw.dataset.mode); const i = authBox.querySelector('[data-pane]:not([hidden]) input'); if (i) i.focus({ preventScroll: true }); return; }
+      if (sw) { showPane(sw.dataset.mode); focusPane(); return; }
       if (e.target.closest('[data-close]')) closeAuth();
     });
-    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && open) closeAuth(); });
+    on(document, 'keydown', (e) => { if (e.key === 'Escape' && open) closeAuth(); });
   }
+})();
 </script>
 </body>
 </html>
