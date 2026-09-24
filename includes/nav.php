@@ -9,7 +9,7 @@ function app_head_assets(): void
 {
     ?>
 <meta name="view-transition" content="same-origin">
-<link rel="stylesheet" href="/assets/nav.css?v=3">
+<link rel="stylesheet" href="/assets/nav.css?v=5">
 <script src="https://cdn.jsdelivr.net/npm/@hotwired/turbo@8.0.12/dist/turbo.es2017-umd.js" defer></script>
 <script src="/js/nav.js" defer></script>
 <?php

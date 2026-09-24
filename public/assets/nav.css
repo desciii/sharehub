@@ -37,3 +37,67 @@
 /* Hide the page scrollbar everywhere (scrolling still works) */
 html { scrollbar-width:none; -ms-overflow-style:none; overflow-x:clip; }
 html::-webkit-scrollbar, body::-webkit-scrollbar { display:none; width:0; height:0; }
+
+/* ===== Fluid buttons (same feel as the landing page) ===== */
+.btn {
+  display:inline-flex; align-items:center; justify-content:center;
+  padding:13px 30px; border-radius:999px; background:#1d2320; color:#fff;
+  font-family:inherit; font-weight:500; font-size:15px; line-height:1.55; text-decoration:none; cursor:pointer;
+  box-shadow:0 0 0 rgba(0,0,0,0);
+  transition:background .25s, transform .25s, box-shadow .25s, color .25s;
+}
+.btn.white { background:#fff; color:#1d2320; }
+.btn-line {
+  display:inline-flex; align-items:center; justify-content:center;
+  padding:11px 26px; border:1.5px solid #1d2320; border-radius:999px; background:transparent; color:#1d2320;
+  font-family:inherit; font-weight:500; font-size:14px; text-decoration:none; cursor:pointer;
+  transition:background .25s, color .25s, transform .25s, box-shadow .25s;
+}
+
+/* Small pill buttons on home + dashboard get the same motion */
+.white-pill, .foot a, .db-actions a {
+  display:inline-flex; align-items:center; justify-content:center;
+  transition:background .25s, color .25s, transform .25s, box-shadow .25s;
+}
+
+/* Sliding arrow */
+.btn::after, .btn-line::after, .white-pill::after, .foot a::after, .db-actions a::after {
+  content:"→"; display:inline-block; width:0; margin-left:0; opacity:0; overflow:hidden;
+  transform:translateX(-6px);
+  transition:width .25s, margin-left .25s, opacity .25s, transform .25s;
+}
+.btn:hover::after, .btn-line:hover::after, .white-pill:hover::after, .foot a:hover::after, .db-actions a:hover::after {
+  width:1.1em; margin-left:8px; opacity:1; transform:none;
+}
+
+/* Lift + shadow */
+.btn:hover { background:#16743f; color:#fff; transform:translateY(-3px); box-shadow:0 10px 22px rgba(0,0,0,.2); }
+.btn.white:hover { background:#e5f5ec; color:#16743f; }
+.btn.line { background:transparent; color:#1d2320; }
+.btn.line:hover { background:#1d2320; color:#fff; }
+.btn-line:hover { background:#1d2320; color:#fff; transform:translateY(-3px); box-shadow:0 10px 22px rgba(0,0,0,.15); }
+.white-pill:hover, .foot a:hover, .db-actions a:hover { transform:translateY(-3px); box-shadow:0 10px 22px rgba(0,0,0,.18); }
+
+/* Press */
+.btn:active, .btn-line:active, .white-pill:active, .foot a:active, .db-actions a:active { transform:translateY(-1px); box-shadow:0 4px 10px rgba(0,0,0,.2); }
+
+.btn:focus-visible, .btn-line:focus-visible { outline:3px solid #1fa35c; outline-offset:3px; }
+
+@media (prefers-reduced-motion:reduce) {
+  .btn, .btn-line, .white-pill, .foot a, .db-actions a { transition:none; }
+  .btn:hover, .btn-line:hover, .white-pill:hover, .foot a:hover, .db-actions a:hover { transform:none; }
+}
+
+/* Keep button text centered when the arrow slides in: mirror it with an invisible spacer on the left */
+.btn::before {
+  content:""; display:inline-block; width:0; margin-right:0; flex:none;
+  transition:width .25s, margin-right .25s;
+}
+.btn:hover::before { width:1.1em; margin-right:8px; }
+
+/* Sit the arrow on the text's vertical center */
+.btn::after, .btn-line::after, .white-pill::after, .foot a::after, .db-actions a::after {
+  line-height:1; position:relative; top:.06em;
+}
+
+@media (prefers-reduced-motion:reduce) { .btn::before { transition:none; } }

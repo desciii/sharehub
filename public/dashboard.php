@@ -14,7 +14,7 @@ $userId = current_user_id();
 $stmt = $db->prepare(
     'SELECT
         g.id AS group_id, g.max_members, g.cost_per_slot, g.status, g.created_by,
-        s.id AS subscription_id, s.name, s.category, s.icon, s.base_price,
+        s.id AS subscription_id, s.name, s.category, s.icon, s.domain, s.base_price,
         gm.payment_status, gm.joined_at,
         (SELECT COUNT(*) FROM group_members gm2 WHERE gm2.group_id = g.id) AS members_count
      FROM group_members gm
@@ -38,9 +38,6 @@ $totalSpent = (float) $stmt->fetchColumn();
 $activeCount = 0;
 $unpaidCount = 0;
 foreach ($myGroups as $g) {
-    if ($g['status'] !== 'recruiting' || $g['created_by'] == $userId) {
-        // treat active/full groups (or ones you own) as "active" for the summary
-    }
     if (in_array($g['status'], ['active', 'full'], true)) $activeCount++;
     if ($g['payment_status'] === 'unpaid') $unpaidCount++;
 }
@@ -65,7 +62,8 @@ app_header('My subscriptions', 'dashboard');
   .db-list { display:flex; flex-direction:column; gap:14px; }
   .db-card { background:#fff; border:1px solid var(--line,#e6e2da); border-radius:16px; padding:18px 20px; display:flex; align-items:center; gap:16px; flex-wrap:wrap; transition:transform .2s, box-shadow .2s; }
   .db-card:hover { transform:translateY(-2px); box-shadow:0 12px 24px rgba(40,50,40,.08); }
-  .db-tile { width:52px; height:52px; border-radius:14px; display:grid; place-items:center; font-size:24px; flex:none; background:var(--tint,#eee); }
+  .db-tile { width:52px; height:52px; border-radius:14px; display:grid; place-items:center; font-size:24px; flex:none; background:#fff; border:1px solid var(--line,#e6e2da); box-shadow:0 4px 10px rgba(0,0,0,.06); }
+  .db-tile img { width:32px; height:32px; object-fit:contain; }
   .db-info { flex:1; min-width:180px; }
   .db-info h3 { font-size:15.5px; font-weight:600; margin-bottom:2px; }
   .db-info .meta { font-size:12.5px; color:var(--muted,#6b7570); }
@@ -120,11 +118,20 @@ app_header('My subscriptions', 'dashboard');
       <?php foreach ($myGroups as $g):
           $isOwner   = (int) $g['created_by'] === (int) $userId;
           $slotsLeft = max(0, (int) $g['max_members'] - (int) $g['members_count']);
-          $tint      = cat_class($g['category']) ?? '';
+          $domain    = trim((string) ($g['domain'] ?? ''));
+          $fallback  = e($g['icon'] ?: '📦');
       ?>
         <div class="db-card">
-          <div class="db-tile" style="<?= $tint ? '' : '' ?>">
-            <?= e($g['icon'] ?: '📦') ?>
+          <div class="db-tile">
+            <?php if ($domain !== ''): ?>
+              <img
+                src="https://www.google.com/s2/favicons?domain=<?= urlencode($domain) ?>&sz=128"
+                alt="" loading="lazy" width="32" height="32"
+                onerror="this.replaceWith(document.createTextNode('<?= $fallback ?>'))"
+              >
+            <?php else: ?>
+              <?= $fallback ?>
+            <?php endif; ?>
           </div>
 
           <div class="db-info">
