@@ -1,5 +1,3 @@
--- ShareHub SQLite schema
-
 CREATE TABLE IF NOT EXISTS users (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   name TEXT NOT NULL,
@@ -13,7 +11,8 @@ CREATE TABLE IF NOT EXISTS subscriptions (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   name TEXT NOT NULL,
   category TEXT NOT NULL,
-  icon TEXT,
+  icon TEXT,             -- emoji fallback, shown if the favicon fails to load
+  domain TEXT,           -- e.g. 'netflix.com', used to fetch the real logo
   base_price REAL NOT NULL,
   description TEXT
 );
@@ -33,7 +32,8 @@ CREATE TABLE IF NOT EXISTS group_members (
   group_id INTEGER NOT NULL REFERENCES groups(id),
   user_id INTEGER NOT NULL REFERENCES users(id),
   payment_status TEXT NOT NULL DEFAULT 'unpaid', -- 'unpaid' | 'paid'
-  joined_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  joined_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE (group_id, user_id)
 );
 
 CREATE TABLE IF NOT EXISTS transactions (

@@ -2,6 +2,7 @@
 // database/seed.php
 // Run AFTER init.php to populate sample data.
 // Usage: php database/seed.php   (or open in browser)
+// Safe to re-run: existing rows are matched by email/name and updated in place.
 
 require __DIR__ . '/../includes/config.php';
 
@@ -20,26 +21,45 @@ foreach ($users as [$name, $email, $plainPassword, $role]) {
     }
 }
 
-// --- Sample subscriptions (matches your prototype) ---
+// --- Real subscription catalog (matches the landing page) ---
+// [name, domain, category, fallback emoji, base_price (₱/mo), description]
 $subscriptions = [
-    ['Canva Pro', 'Creative', '🎨', 600, 'Creative and design tools for student projects.'],
-    ['Microsoft 365', 'Productivity', '💻', 1350, 'Productivity and document tools for schoolwork and collaboration.'],
-    ['Spotify Premium', 'Entertainment', '🎵', 450, 'Entertainment subscription example for an eligible group plan.'],
-    ['Notion Plus', 'Productivity', '📝', 450, 'Workspace and organization tools for notes and projects.'],
-    ['Research Tools', 'Research', '📊', 800, 'Prototype research/data subscription listing for student research teams.'],
-    ['Education Platform', 'Education', '📚', 700, 'Online learning resources organized into an eligible group plan.'],
+    ['Netflix', 'netflix.com', 'Entertainment', '🎬', 549, 'Streaming service for movies, series and original shows you can watch on any device.'],
+    ['Crunchyroll', 'crunchyroll.com', 'Entertainment', '🍥', 299, 'Anime streaming with a huge library, including new episodes right after they air in Japan.'],
+    ['Spotify Premium', 'spotify.com', 'Entertainment', '🎵', 149, 'Ad-free music and podcasts with offline downloads and unlimited skips.'],
+    ['Disney+', 'disneyplus.com', 'Entertainment', '🏰', 299, 'Streaming home of Disney, Pixar, Marvel, Star Wars and National Geographic.'],
+    ['Turnitin', 'turnitin.com', 'Education', '📄', 150, 'Plagiarism checker that schools use to review how original a paper is.'],
+    ['Grammarly', 'grammarly.com', 'Education', '✍️', 690, 'Writing assistant that fixes grammar, spelling, clarity and tone as you type.'],
+    ['Quizlet Plus', 'quizlet.com', 'Education', '🧠', 460, 'Flashcards and study modes for exams, with no ads and extra practice tests.'],
+    ['Coursera Plus', 'coursera.org', 'Education', '🎓', 1699, 'Unlimited access to thousands of online courses and certificates from top universities.'],
+    ['Canva Pro', 'canva.com', 'Creative', '🎨', 549, 'Design tool with premium templates, a background remover and brand kits.'],
+    ['Adobe Creative Cloud', 'adobe.com', 'Creative', '🖌️', 2999, 'Photoshop, Illustrator, Premiere Pro and more of the industry-standard creative apps.'],
+    ['CapCut Pro', 'capcut.com', 'Creative', '✂️', 399, 'Video editor with premium effects, templates and exports without a watermark.'],
+    ['Microsoft 365', 'microsoft.com', 'Productivity', '💻', 499, 'Word, Excel, PowerPoint and Teams, plus 1 TB of OneDrive cloud storage.'],
+    ['Notion Plus', 'notion.so', 'Productivity', '📝', 575, 'Notes, docs and project planning together in one organized workspace.'],
+    ['ChatGPT Plus', 'chatgpt.com', 'Productivity', '🤖', 1150, 'AI assistant for writing, coding and study help, with priority access to newer models.'],
+    ['Perplexity Pro', 'perplexity.ai', 'Research', '🔬', 1150, 'AI research assistant that answers your questions with cited sources.'],
+    ['Wolfram Alpha Pro', 'wolframalpha.com', 'Research', '🧮', 420, 'Step-by-step solutions for math, science and data questions.'],
 ];
 
 $subIds = [];
-foreach ($subscriptions as [$name, $cat, $icon, $basePrice, $desc]) {
+foreach ($subscriptions as [$name, $domain, $cat, $icon, $basePrice, $desc]) {
     $exists = $db->prepare('SELECT id FROM subscriptions WHERE name = ?');
     $exists->execute([$name]);
     $row = $exists->fetch();
+
     if ($row) {
         $subIds[$name] = $row['id'];
+        // Backfill domain/icon/price/desc on existing rows (e.g. old generic catalog).
+        $update = $db->prepare(
+            'UPDATE subscriptions SET category = ?, icon = ?, domain = ?, base_price = ?, description = ? WHERE id = ?'
+        );
+        $update->execute([$cat, $icon, $domain, $basePrice, $desc, $row['id']]);
     } else {
-        $stmt = $db->prepare('INSERT INTO subscriptions (name, category, icon, base_price, description) VALUES (?, ?, ?, ?, ?)');
-        $stmt->execute([$name, $cat, $icon, $basePrice, $desc]);
+        $stmt = $db->prepare(
+            'INSERT INTO subscriptions (name, category, icon, domain, base_price, description) VALUES (?, ?, ?, ?, ?, ?)'
+        );
+        $stmt->execute([$name, $cat, $icon, $domain, $basePrice, $desc]);
         $subIds[$name] = $db->lastInsertId();
     }
 }
@@ -49,12 +69,16 @@ $creator = $db->query("SELECT id FROM users WHERE email = 'karyl@student.com'")-
 $creatorId = $creator['id'];
 
 $groups = [
-    ['Canva Pro', 5, 120],
+    ['Canva Pro', 5, 80],
     ['Microsoft 365', 6, 225],
     ['Spotify Premium', 6, 75],
 ];
 
 foreach ($groups as [$subName, $maxMembers, $costPerSlot]) {
+    if (!isset($subIds[$subName])) {
+        continue; // subscription name changed/removed from catalog above
+    }
+
     $exists = $db->prepare('SELECT id FROM groups WHERE subscription_id = ?');
     $exists->execute([$subIds[$subName]]);
     if (!$exists->fetch()) {

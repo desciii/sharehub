@@ -116,7 +116,9 @@ if (!function_exists('current_user')) {
 }
 
 if (!function_exists('require_login')) {
-    function require_login(string $loginUrl = '/login.php'): void
+    // Logged-out visitors go to the landing page, which opens the login form
+    // and sends them back to the page they wanted after they log in.
+    function require_login(string $loginUrl = '/index.php'): void
     {
         if (!is_logged_in()) {
             $redirect = $_SERVER['REQUEST_URI'] ?? '/index.php';

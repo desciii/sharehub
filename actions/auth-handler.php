@@ -60,8 +60,9 @@ if ($action === 'login') {
     }
 
     $_SESSION['auth_errors'] = $errors;
+    $_SESSION['auth_mode'] = 'login';
     $_SESSION['old_email'] = $email;
-    redirect('/login.php');
+    redirect('/index.php');
 }
 
 if ($action === 'register') {
@@ -122,9 +123,10 @@ if ($action === 'register') {
     }
 
     $_SESSION['auth_errors'] = $errors;
+    $_SESSION['auth_mode'] = 'register';
     $_SESSION['old_name'] = $name;
     $_SESSION['old_email'] = $email;
-    redirect('/register.php');
+    redirect('/index.php');
 }
 
 if ($action === 'logout') {
